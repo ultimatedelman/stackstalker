@@ -1,0 +1,19 @@
+{
+  "mainfest_version": 2,
+  "name": "StackStalker",
+  "background_page": "background.html",
+  "version": "3.0",
+  "description": "Monitor any question from any Stack Exchange site and see when it is updated!",
+  "browser_action": {
+    "default_icon": "images/icon.png",
+    "default_popup": "popup.html"
+  },
+  "permissions": [
+	"tabs"
+	,"http://*.stackoverflow.com/"
+	,"http://*.superuser.com/"
+	,"http://*.stackapps.com/"
+	,"http://*.serverfault.com/"
+	,"http://*.stackexchange.com/"
+  ]
+}
