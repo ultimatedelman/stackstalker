@@ -1,0 +1,23 @@
+{
+    "noarg":true
+    , "noempty":true
+    , "eqeqeq":true
+    , "bitwise":true
+    , "unused":true
+    , "curly":true
+    , "maxerr":50
+    , "laxcomma":true
+    , "smarttabs":true
+    , "expr":true
+    , "newcap": true
+    , "indent": 5
+    , "globals": {
+        "Question": true
+        , "Api": true
+        , "Form": true
+        , "BG": true
+        , "chrome": false
+        , "jQuery": false
+        , "$": false
+    }
+}

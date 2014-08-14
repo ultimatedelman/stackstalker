@@ -1,4 +1,5 @@
-﻿var Form = {
+﻿'use strict';
+var Form = {
     bgPage: null
     , questions: []
 	, tabUrl: ''
@@ -10,24 +11,25 @@
         Form.bgPage.BG.updateQuestions();
 
         //bind
-        $('.title a').live('click', Form.navigate);
-        $('.actions .delete').live('click', Form.deleteQuestion);
-        $('.actions .monitor').live('click', Form.toggleMonitor);
-        $('.markread').live('click', function () {
+        $('.title a').on('click', Form.navigate);
+        $('.actions .delete').on('click', Form.deleteQuestion);
+        $('.actions .monitor').on('click', Form.toggleMonitor);
+        $('.markread').on('click', function () {
             var link = $(this);
             Form.markAsRead(link.parents('.q'));
             link.hide();
         });
         $('.clear').click(Form.reset);
-        $('.addthis').live('click', Form.addQuestion);
+        $('.addthis').on('click', Form.addQuestion);
     }
     , addQuestion: function () {
-        var link = $(this);
-        var site = link.attr('class').replace('addthis', '').replace(' ','');
+        var link = $(this)
+            , site = link.attr('class').replace('addthis', '').replace(' ','')
+            , id
+        ;
         if (site.length) {
             link.after('<img src="images/loading.gif" alt="Loading..." class="loading" />');
-            var id = Question.getIdFromInput(Form.tabUrl);
-            id = site + '|' + id;
+            id = site + '|' + Question.getIdFromInput(Form.tabUrl);
             if (!(id in localStorage)) {
                 Question.getQuestionsFromApi(id.split('|')[1], Form.getQSuccess, site);
             } else {
@@ -39,15 +41,16 @@
         $('#questions').append(Question.format(q));
     }
     , deleteQuestion: function () {
-        var q = $(this).parents('.q');
-        var id = q.attr('id');
+        var q = $(this).parents('.q')
+            , id = q.attr('id')
+        ;
         q.remove();
         Question.remove(id);
     }
     , getQSuccess: function (result, site) {
         if (result) {
-            console.log(result);
             var q = Question.init(result.questions[0], site);
+            console.log(result);
             Question.store(q);
             Form.appendQuestion(q);
             Form.bgPage.BG.updateQuestions();
@@ -65,43 +68,50 @@
         $('.loading').remove();
     }
     , loadQuestions: function () {
+        var id;
         Form.questions = [];
-        for (var id in localStorage) {
-            if (id.indexOf('|') != -1)
+        for (id in localStorage) {
+            if (id.indexOf('|') !== -1) {
                 Form.questions.push(Question.retrieve(id));  //load questions locally, convert to indexable array
+            }
         }
         Form.questions.sort(function (a, b) { //puts updated highest, monitoring next, unmonitored last
-            var count = 0;
-            if (b.updated == a.updated)
-                if (b.autoupdate == a.autoupdate)
+            if (b.updated === a.updated) {
+                if (b.autoupdate === a.autoupdate) {
                     return b.last_activity_date - a.last_activity_date;
-                else
-                    return b.autoupdate - a.autoupdate;
-            else
+                } else {
+                    return b.autoupdate - a.autoupdate;                
+                }
+            } else {
                 return b.updated - a.updated;
+            }
         });
     }
     , navigate: function () {
-        var link = $(this);
-        var row = link.parents('.q');
+        var link = $(this)
+            , row = link.parents('.q')
+            , appId = row.attr('id').split('|')
+            , qTabUrl = Api.getApiById(appId[0]).url + 'questions/' + appId[1]
+        ;
         Form.markAsRead(row);
-        var appId = row.attr('id').split('|');
-        var qTabUrl = Api.getApiById(appId[0]).url + 'questions/' + appId[1];
         chrome.tabs.getAllInWindow(null, function (result) {
-            var tabExists = false;
-            for (var i = 0, len = result.length; i < len; i++) {
+            var tabExists = false
+                , i, len
+            ;
+            for (i = 0, len = result.length; i < len; i++) {
                 if (result[i].url.indexOf(qTabUrl) > -1) {
                     chrome.tabs.update(result[i].id, { selected: true, url: result[i].url });
                     tabExists = true;
                     break;
                 }
             }
-            if (!tabExists) chrome.tabs.create({ url: qTabUrl });
+            !tabExists && chrome.tabs.create({ url: qTabUrl });
         });
     }
     , markAsRead: function (body) {
-        var id = body.attr('id');
-        var q = Question.retrieve(id);
+        var id = body.attr('id')
+            , q = Question.retrieve(id)
+        ;
         q.updated = false;
         Question.store(q);
         body.removeClass('updated');
@@ -110,22 +120,24 @@
     }
     , renderAddThisLink: function () {
         chrome.tabs.getSelected(null, function (tab) {
+            var isFollowing = false
+                , id, i, len, add, onSite, site
+            ;
             Form.tabUrl = tab.url;
-            var id = Question.getIdFromInput(Form.tabUrl);
-            var isFollowing = false;
-            for (var i = 0, len = Form.questions.length; i < len; i++) {
-                if (Form.questions[i].question_id == id) {
+            id = Question.getIdFromInput(Form.tabUrl);
+            for (i = 0, len = Form.questions.length; i < len; i++) {
+                if (Form.questions[i].question_id === id) {
                     isFollowing = true;
                     break;
                 }
             }
-            var add = $('#actions a.addthis');
+            add = $('#actions a.addthis');
             if (!isFollowing) {
-                var onSite = false;
+                onSite = false;
                 if (id) {
-                    for (var i = 0, len = Api.sites.length; i < len; i++) {
-                        var site = Api.sites[i];
-                        if (Form.tabUrl.indexOf(site.url + 'questions') != -1) {
+                    for (i = 0, len = Api.sites.length; i < len; i++) {
+                        site = Api.sites[i];
+                        if (Form.tabUrl.indexOf(site.url + 'questions') !== -1) {
                             add.addClass(site.id);
                             add.find('span').text('#' + id);
                             onSite = true;
@@ -133,7 +145,7 @@
                         }
                     }
                 }
-                if (!onSite) add.hide();
+                !onSite && add.hide();
             } else {
                 //for some reason .die() won't work, so working around in the click handler
                 add.html('You are following this question.').removeAttr('href');
@@ -141,9 +153,9 @@
         });
     }
     , renderQuestions: function () {
+        var allQs;
         Form.loadQuestions();
-
-        var allQs = $('#questions').empty().hide();
+        allQs = $('#questions').empty().hide();
         for (var i = 0, len = Form.questions.length; i < len; i++) {
             Form.appendQuestion(Form.questions[i]);
         }
@@ -155,10 +167,12 @@
         $('#questions').empty();
     }
     , toggleMonitor: function () {
-        var link = $(this);
-        var qBody = link.parents('.q');
-        var id = qBody.attr('id');
-        var q = Question.retrieve(id);
+        var link = $(this)
+            , qBody = link.parents('.q')
+            , id = qBody.attr('id')
+            , q = Question.retrieve(id)
+        ;
+        
         if (link.hasClass('off')) {
             link.removeClass('off').attr('title', 'Monitoring. Click to disable monitoring.');
             q.autoupdate = true;
@@ -169,7 +183,8 @@
         }
         Question.store(q);
     }
-}
+};
+
 $(function() {
     Form.init();
 });
