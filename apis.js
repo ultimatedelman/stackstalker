@@ -33,7 +33,7 @@ var Api = {
             Api.sites = items.sites;
         });
     }
-    , addQuestion: function() {
+    , addQuestion: function(callback) {
         var apiParam;
         chrome.tabs.query({active: true, currentWindow: true}, function (tabArr) {
             var tab = tabArr[0]
@@ -41,17 +41,8 @@ var Api = {
                 , id = url.split('/')[2] //follows "questions"
                 , site
             ;
-            if (url.indexOf('stackexchange') > -1) {
-                //if stackexchange site, format is xxxx.stackexchange.com/questions/[id]/[slug]
-                 apiParam = url.split('.stackexchange')[0];
-            } else {
-                if (isMainSite(url)) {
-                    apiParam = url.split('.com')[0];                    
-                } else {
-                    //no api param
-                    return;
-                }
-            }
+            
+            apiParam = getApiParam(url);
             
             site = Api.sites[apiParam];
             if (site) {
@@ -69,9 +60,19 @@ var Api = {
         });
         
         function doAdd(data) {
-            Api.sites[apiParam].questions[data.questions[0].question_id] = data.questions[0];
-            chrome.storage.sync.set({sites: Api.sites});
+            var q = data.questions[0];
+            q.autoupdate = true;
+            q.updated = false;
+            q.site = apiParam;
+            Api.sites[apiParam].questions[q.question_id] = q;            
+            chrome.storage.sync.set({sites: Api.sites}, function() {
+                callback && callback();                
+            });
         }
+    }
+    , empty: function() {
+        Api.sites = {};
+        chrome.storage.sync.set({sites: {}});
     }
     , getQuestions: function(data, ids) {
         //data should be property (site) of Api.sites
@@ -80,8 +81,8 @@ var Api = {
         ids = ids || $.map(data.questions, function(elem, key) { return key; });
 
         //to see what is being filtered:
-        //https://api.stackexchange.com/docs/questions-by-ids#order=desc&sort=activity&ids=12452275%3B20511168&filter=!-Kh(Q.0gxbkCKhAfn49DKcR6NISntjfRO&site=stackoverflow&run=true
-        url = 'https://api.stackexchange.com/' + Api.version + '/questions/' + ids.join(';') + '?site=' + data.site.api_site_parameter + '&filter=!-Kh(Q.0gxbkCKhAfn49DKcR6NISntjfRO';
+        //https://api.stackexchange.com/docs/questions-by-ids#order=desc&sort=activity&ids=12452275%3B20511168&filter=!-Kh(Q.0gxbkCOEWx3OgG_bJrd4ml-QyMG&site=stackoverflow&run=true
+        url = 'https://api.stackexchange.com/' + Api.version + '/questions/' + ids.join(';') + '?site=' + data.site.api_site_parameter + '&filter=!-Kh(Q.0gxbkCOEWx3OgG_bJrd4ml-QyMG';
         return $.ajax(url, {type: 'GET'})
             .then(function(resp) {
                 return { questions: resp.items, site: data };
@@ -101,6 +102,14 @@ var Api = {
             })
         ;
     }
+    , removeQuestion: function(apiParam, id) {
+        delete Api.sites[apiParam].questions[id];
+        chrome.storage.sync.set({sites: Api.sites});            
+    }
+    , updateQuestion: function(data) {
+        Api.sites[data.site].questions[data.question_id] = data;
+        chrome.storage.sync.set({sites: Api.sites});
+    }
 };
 
 Api.init();
@@ -116,4 +125,19 @@ function isMainSite(url) {
         }
     }
     return false;
+}
+
+function getApiParam(url) {
+    url = url.replace('http://', '');
+    if (url.indexOf('stackexchange') > -1) {
+        //if stackexchange site, format is xxxx.stackexchange.com/questions/[id]/[slug]
+         return url.split('.stackexchange')[0];
+    } else {
+        if (isMainSite(url)) {
+            return url.split('.com')[0];                    
+        } else {
+            //no api param
+            return false;
+        }
+    }
 }

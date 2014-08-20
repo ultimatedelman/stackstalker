@@ -12,12 +12,12 @@
     , "newcap": true
     , "indent": 5
     , "globals": {
-        "Question": true
-        , "Api": true
+        "Api": true
         , "Form": true
         , "BG": true
         , "chrome": false
         , "jQuery": false
         , "$": false
+        , "Handlebars": false
     }
 }

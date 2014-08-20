@@ -10,7 +10,6 @@
     "scripts": [
       "jquery.min.js"
       , "apis.js"
-      , "question.js"
       , "background.js"
     ]
   }
@@ -26,8 +25,10 @@
     , "http://*.superuser.com/"
     , "http://*.stackapps.com/"
     , "http://*.serverfault.com/"
+    , "http://*.askubuntu.com/"
+    , "http://*.mathoverflow.com/"
     , "http://*.stackexchange.com/"
-  ]
+  ]  
   , "author": "Jason Edelman"
   , "homepage_url": "http://jasonedelman.com"
 }

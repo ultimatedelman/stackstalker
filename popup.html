@@ -4,32 +4,13 @@
 	<link type="text/css" href="skin.css" rel="Stylesheet" />
 	<script type="text/javascript" src="jquery.min.js"></script>
 	<script type="text/javascript" src="apis.js"></script>
-	<script type="text/javascript" src="question.js"></script>
 	<script type="text/javascript" src="form.js"></script>
 </head>
-<body>
-	<ul id="template">
-		<li class="q">
-			<div class="actions">
-				<ul>
-					<li><a href="javascript:" class="monitor" title="Monitoring. Click to disable monitoring">Monitor Toggle</a></li>
-                    <li><a href="javascript:" class="markread" title="Mark as read">Mark as read</a></li>
-					<li><a href="javascript:" class="delete" title="Delete this question">Delete</a></li>
-				</ul>
-			</div>
-			<div class="votes"><p class="count"></p><p class="label">votes</p></div>
-			<div class="answers"><p class="count"></p><p class="label">ans</p></div>
-			<div class="views"><p class="count"></p><p class="label">views</p></div>
-			<div class="title">
-                <a href="javascript:"></a>
-            </div>
-			<p class="comments">Comments: <strong class="questioncomments"></strong> | Answer comments: <strong class="answercomments"></strong></p>
-		</li>
-	</ul>
+<body>	
 	<section id="wrapper">
 		<p id="actions">
-            <a class="addthis" href="javascript:">Add This Question (<span></span>)</a>
-            <a class="clear" href="javascript:">Clear All</a>
+            <button class="addthis">Add This Question (<span></span>)</button>
+            <button class="clear">Clear All</button>
         </p>	
         <p class="error"></p>
 		<section id="content">
@@ -37,6 +18,26 @@
 			
 			</ul>
 		</section>
-	</section>
+	</section>	
+	<div id="template">
+		<ul>			
+			<li class="q">
+				<div class="actions">
+					<ul>
+						<li><button class="monitor">Monitor Toggle</button></li>						
+						<li><button class="delete" title="Delete this question">Delete</button></li>
+					</ul>
+				</div>
+				<div class="votes"><p class="count"></p><p class="label">votes</p></div>
+				<div class="answers"><p class="count"></p><p class="label">ans</p></div>
+				<div class="views"><p class="count"></p><p class="label">views</p></div>
+				<div class="title">
+		            <a href="#"></a>
+		        </div>
+				<p class="comments">Comments: <strong class="questioncomments"></strong></p>
+				<figure><img src="" alt=""></figure>
+			</li>
+		</ul>
+	</div>
 </body>
 </html>
