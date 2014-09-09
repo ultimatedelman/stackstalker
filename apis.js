@@ -37,135 +37,154 @@
         [sitename_questionId]: { data }
     }    
 */
-var Api = {
-    key: 'XIlKRyP9jUyL5p-LkZtcpw'
-    , version: '2.2'
-    , sites: {}
-    , totalQuestions: 0
-    , init: function() {
-        //pass in null arg to get all values in sync
-        chrome.storage.sync.get(null, function(items) {
-            var datum, props;
-            for (datum in items) {
-                //fold storage format into memory format
-                props = datum.split('_');
-                if (props[0] === 'site') {
-                    //hit question first somehow, fill in site, leave questions
-                    if (!Api.sites[props[1]]) {
-                        Api.sites[props[1]] = { questions: {}};                    
-                    }
-                    Api.sites[props[1]].site = items[datum];
-                } else {
-                    if (!Api.sites[props[0]]) {
-                        //hit question first somehow, get site later
-                        Api.sites[props[0]] = {site: {}, questions: {}};
-                    }
-                    Api.sites[props[0]].questions[props[1]] = items[datum]; 
-                    Api.totalQuestions++;
-                }                
-            }
-        });
-    }
-    , addQuestion: function(callback) {
-        var apiParam;
-        callback = callback || $.noop;
-        chrome.tabs.query({active: true, currentWindow: true}, function (tabArr) {
-            var tab = tabArr[0]
-                , url = tab.url.replace('http://', '')
-                , id = url.split('/')[2] //follows "questions"
-                , site
-            ;
-            
-            apiParam = getApiParam(url);
-            
-            site = Api.sites[apiParam];
-            if (site) {
-                if (!site.questions[id]) {
-                    Api.getQuestions(site, [id]).done(doAdd);
+(function(window, $) {
+    window.SS = window.SS || {};
+
+    var Api = SS.Api = {
+        key: 'XIlKRyP9jUyL5p-LkZtcpw'
+        , version: '2.2'
+        , sites: {}
+        , totalQuestions: 0
+        , init: function() {
+            //pass in null arg to get all values in sync
+            chrome.storage.sync.get(null, function(items) {
+                var datum, props;
+                for (datum in items) {
+                    //fold storage format into memory format
+                    props = datum.split('_');
+                    if (props[0] === 'site') {
+                        //hit question first somehow, fill in site, leave questions
+                        if (!Api.sites[props[1]]) {
+                            Api.sites[props[1]] = { questions: {}};                    
+                        }
+                        Api.sites[props[1]].site = items[datum];
+                    } else {
+                        if (!Api.sites[props[0]]) {
+                            //hit question first somehow, get site later
+                            Api.sites[props[0]] = {site: {}, questions: {}};
+                        }
+                        Api.sites[props[0]].questions[props[1]] = items[datum]; 
+                        Api.totalQuestions++;
+                    }                
                 }
-                //else - question already added, will auto update on its own
+            });
+        }
+        , addQuestion: function(callback) {
+            var apiParam;
+            callback = callback || $.noop;
+            chrome.tabs.query({active: true, currentWindow: true}, function (tabArr) {
+                var tab = tabArr[0]
+                    , url = tab.url.replace('http://', '')
+                    , id = url.split('/')[2] //follows "questions"
+                    , site
+                ;
+                
+                apiParam = Api.getApiParam(url);
+                
+                site = Api.sites[apiParam];
+                if (site) {
+                    if (!site.questions[id]) {
+                        Api.getQuestions(site, [id]).done(doAdd);
+                    }
+                    //else - question already added, will auto update on its own
+                } else {
+                    //get site, add to site list
+                    Api.getSite(apiParam).done(function() {
+                        //get question, add to site
+                        Api.getQuestions(Api.sites[apiParam], [id]).done(doAdd);
+                    });
+                }
+            });
+            
+            function doAdd(data) {
+                var q = data.questions[0]
+                    , storeQ = {}
+                ;
+                //set q data
+                q.autoupdate = true;
+                q.updated = false;
+                q.site = apiParam;
+                Api.sites[apiParam].questions[q.question_id] = q;
+
+                storeQ[[apiParam, q.question_id].join('_')] = q;
+
+                chrome.storage.sync.set(storeQ, callback);
+                Api.totalQuestions++;
+            }
+        }
+        , empty: function() {
+            //go through questions for sites and delete
+            var apiParam, site, question;
+            for (apiParam in Api.sites) {
+                site = Api.sites[apiParam];
+                for (question in site.questions) {
+                    chrome.storage.sync.remove([apiParam, question].join('_'));
+                    delete site.questions[question];
+                }
+            }
+            Api.totalQuestions = 0;
+        }
+        , getApiParam: function(url) {
+            url = url.replace('http://', '');
+            if (url.indexOf('stackexchange') > -1) {
+                //if stackexchange site, format is xxxx.stackexchange.com/questions/[id]/[slug]
+                 return url.split('.stackexchange')[0];
             } else {
-                //get site, add to site list
-                Api.getSite(apiParam).done(function() {
-                    //get question, add to site
-                    Api.getQuestions(Api.sites[apiParam], [id]).done(doAdd);
-                });
+                if (isMainSite(url)) {
+                    return url.split('.com')[0];                    
+                } else {
+                    //no api param
+                    return false;
+                }
             }
-        });
-        
-        function doAdd(data) {
-            var q = data.questions[0]
-                , storeQ = {}
+        }
+        , getQuestions: function(data, ids) {
+            //data should be property (site) of Api.sites
+            //ids is optional. if provided, should be array. otherwise, function will pull all ids from data arg
+            var url;
+            ids = ids || $.map(data.questions, function(elem, key) { return key; });
+
+            //to see what is being filtered:
+            //https://api.stackexchange.com/docs/questions-by-ids#order=desc&sort=activity&ids=12452275%3B20511168&filter=!-Kh(Q.0gxbkCOEWx3OgG_bJrd4ml-QyMG&site=stackoverflow&run=true
+            url = 'https://api.stackexchange.com/' + Api.version + '/questions/' + ids.join(';') + '?site=' + data.site.api_site_parameter + '&filter=!-Kh(Q.0gxbkCOEWx3OgG_bJrd4ml-QyMG';
+            return $.ajax(url, {type: 'GET'})
+                .then(function(resp) {
+                    return { questions: resp.items, site: data };
+                })
             ;
-            //set q data
-            q.autoupdate = true;
-            q.updated = false;
-            q.site = apiParam;
-            Api.sites[apiParam].questions[q.question_id] = q;
-
-            storeQ[[apiParam, q.question_id].join('_')] = q;
-
-            chrome.storage.sync.set(storeQ, callback);
-            Api.totalQuestions++;
         }
-    }
-    , empty: function() {
-        //go through questions for sites and delete
-        var apiParam, site, question;
-        for (apiParam in Api.sites) {
-            site = Api.sites[apiParam];
-            for (question in site.questions) {
-                chrome.storage.sync.remove([apiParam, question].join('_'));
-                delete site.questions[question];
-            }
+        , getSite: function(apiParam) {
+            //to see what is being filtered:
+            //https://api.stackexchange.com/docs/sites#pagesize=1000&filter=!)QmDpcIl)2PARZSfYk9uc*lK&run=true
+            return $.ajax('https://api.stackexchange.com/' + Api.version + '/info?site=' + apiParam + '&filter=!)5FwpfJMpKy93kVbMYKqm1GbwTga', {type: 'GET'})
+                .done(function(resp) {
+                    var storeSite = {};
+                    Api.sites[apiParam] = {site: resp.items[0].site, questions: {}};
+                    storeSite[['site', apiParam].join('_')] = resp.items[0].site;
+                    chrome.storage.sync.set(storeSite);            
+                })
+                .fail(function() {
+                    throw new Error('Could not access sites API');
+                })
+            ;
         }
-        Api.totalQuestions = 0;
-    }
-    , getQuestions: function(data, ids) {
-        //data should be property (site) of Api.sites
-        //ids is optional. if provided, should be array. otherwise, function will pull all ids from data arg
-        var url;
-        ids = ids || $.map(data.questions, function(elem, key) { return key; });
+        , removeQuestion: function(apiParam, id, callback) {
+            callback = callback || $.noop;
+            delete Api.sites[apiParam].questions[id];
+            Api.totalQuestions--;
+            chrome.storage.sync.remove([apiParam, id].join('_'), callback);
+        }
+        , updateQuestion: function(data) {
+            var storeQ = {};
+            Api.sites[data.site].questions[data.question_id] = data;
+            storeQ[[data.site, data.question_id].join('_')] = data;
+            chrome.storage.sync.set(storeQ);
+        }
+    };
 
-        //to see what is being filtered:
-        //https://api.stackexchange.com/docs/questions-by-ids#order=desc&sort=activity&ids=12452275%3B20511168&filter=!-Kh(Q.0gxbkCOEWx3OgG_bJrd4ml-QyMG&site=stackoverflow&run=true
-        url = 'https://api.stackexchange.com/' + Api.version + '/questions/' + ids.join(';') + '?site=' + data.site.api_site_parameter + '&filter=!-Kh(Q.0gxbkCOEWx3OgG_bJrd4ml-QyMG';
-        return $.ajax(url, {type: 'GET'})
-            .then(function(resp) {
-                return { questions: resp.items, site: data };
-            })
-        ;
-    }
-    , getSite: function(apiParam) {
-        //to see what is being filtered:
-        //https://api.stackexchange.com/docs/sites#pagesize=1000&filter=!)QmDpcIl)2PARZSfYk9uc*lK&run=true
-        return $.ajax('https://api.stackexchange.com/' + Api.version + '/info?site=' + apiParam + '&filter=!)5FwpfJMpKy93kVbMYKqm1GbwTga', {type: 'GET'})
-            .done(function(resp) {
-                var storeSite = {};
-                Api.sites[apiParam] = {site: resp.items[0].site, questions: {}};
-                storeSite[['site', apiParam].join('_')] = resp.items[0].site;
-                chrome.storage.sync.set(storeSite);            
-            })
-            .fail(function() {
-                throw new Error('Could not access sites API');
-            })
-        ;
-    }
-    , removeQuestion: function(apiParam, id, callback) {
-        callback = callback || $.noop;
-        delete Api.sites[apiParam].questions[id];
-        Api.totalQuestions--;
-        chrome.storage.sync.remove([apiParam, id].join('_'), callback);
-    }
-    , updateQuestion: function(data) {
-        var storeQ = {};
-        Api.sites[data.site].questions[data.question_id] = data;
-        storeQ[[data.site, data.question_id].join('_')] = data;
-        chrome.storage.sync.set(storeQ);
-    }
-};
+    Api.init();
 
-Api.init();
+})(window, jQuery);
 
 function isMainSite(url) {
     //not very scalable, but so far i think these are the only ones with their own url. this may require maintenance, not sure how else to do it
@@ -178,19 +197,4 @@ function isMainSite(url) {
         }
     }
     return false;
-}
-
-function getApiParam(url) {
-    url = url.replace('http://', '');
-    if (url.indexOf('stackexchange') > -1) {
-        //if stackexchange site, format is xxxx.stackexchange.com/questions/[id]/[slug]
-         return url.split('.stackexchange')[0];
-    } else {
-        if (isMainSite(url)) {
-            return url.split('.com')[0];                    
-        } else {
-            //no api param
-            return false;
-        }
-    }
 }

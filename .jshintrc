@@ -13,6 +13,7 @@
     , "indent": 5
     , "globals": {
         "Api": true
+        , "SS": true
         , "Form": true
         , "BG": true
         , "chrome": false
