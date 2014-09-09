@@ -1,7 +1,7 @@
 ﻿'use strict';
 
 /*
-    sites structure (example):
+    sites structure in memory (example):
 
     sites: {
         stackoverflow: {
@@ -22,19 +22,53 @@
         }
         ...
     }
-*/
 
+    data structure for chrome.storage.sync
+    - needs to be broken up like this to avoid memory constraints
+    - https://developer.chrome.com/extensions/storage#property-sync
+
+    {
+        [site_sitename]: {
+            {data}
+        }
+    }
+
+    {
+        [sitename_questionId]: { data }
+    }    
+*/
 var Api = {
     key: 'XIlKRyP9jUyL5p-LkZtcpw'
     , version: '2.2'
     , sites: {}
+    , totalQuestions: 0
     , init: function() {
-        chrome.storage.sync.get('sites', function(items) {
-            Api.sites = items.sites;
+        //pass in null arg to get all values in sync
+        chrome.storage.sync.get(null, function(items) {
+            var datum, props;
+            for (datum in items) {
+                //fold storage format into memory format
+                props = datum.split('_');
+                if (props[0] === 'site') {
+                    //hit question first somehow, fill in site, leave questions
+                    if (!Api.sites[props[1]]) {
+                        Api.sites[props[1]] = { questions: {}};                    
+                    }
+                    Api.sites[props[1]].site = items[datum];
+                } else {
+                    if (!Api.sites[props[0]]) {
+                        //hit question first somehow, get site later
+                        Api.sites[props[0]] = {site: {}, questions: {}};
+                    }
+                    Api.sites[props[0]].questions[props[1]] = items[datum]; 
+                    Api.totalQuestions++;
+                }                
+            }
         });
     }
     , addQuestion: function(callback) {
         var apiParam;
+        callback = callback || $.noop;
         chrome.tabs.query({active: true, currentWindow: true}, function (tabArr) {
             var tab = tabArr[0]
                 , url = tab.url.replace('http://', '')
@@ -60,19 +94,32 @@ var Api = {
         });
         
         function doAdd(data) {
-            var q = data.questions[0];
+            var q = data.questions[0]
+                , storeQ = {}
+            ;
+            //set q data
             q.autoupdate = true;
             q.updated = false;
             q.site = apiParam;
-            Api.sites[apiParam].questions[q.question_id] = q;            
-            chrome.storage.sync.set({sites: Api.sites}, function() {
-                callback && callback();                
-            });
+            Api.sites[apiParam].questions[q.question_id] = q;
+
+            storeQ[[apiParam, q.question_id].join('_')] = q;
+
+            chrome.storage.sync.set(storeQ, callback);
+            Api.totalQuestions++;
         }
     }
     , empty: function() {
-        Api.sites = {};
-        chrome.storage.sync.set({sites: {}});
+        //go through questions for sites and delete
+        var apiParam, site, question;
+        for (apiParam in Api.sites) {
+            site = Api.sites[apiParam];
+            for (question in site.questions) {
+                chrome.storage.sync.remove([apiParam, question].join('_'));
+                delete site.questions[question];
+            }
+        }
+        Api.totalQuestions = 0;
     }
     , getQuestions: function(data, ids) {
         //data should be property (site) of Api.sites
@@ -93,22 +140,28 @@ var Api = {
         //to see what is being filtered:
         //https://api.stackexchange.com/docs/sites#pagesize=1000&filter=!)QmDpcIl)2PARZSfYk9uc*lK&run=true
         return $.ajax('https://api.stackexchange.com/' + Api.version + '/info?site=' + apiParam + '&filter=!)5FwpfJMpKy93kVbMYKqm1GbwTga', {type: 'GET'})
-            .done(function(resp) {            
+            .done(function(resp) {
+                var storeSite = {};
                 Api.sites[apiParam] = {site: resp.items[0].site, questions: {}};
-                chrome.storage.sync.set({sites: Api.sites});            
+                storeSite[['site', apiParam].join('_')] = resp.items[0].site;
+                chrome.storage.sync.set(storeSite);            
             })
             .fail(function() {
                 throw new Error('Could not access sites API');
             })
         ;
     }
-    , removeQuestion: function(apiParam, id) {
+    , removeQuestion: function(apiParam, id, callback) {
+        callback = callback || $.noop;
         delete Api.sites[apiParam].questions[id];
-        chrome.storage.sync.set({sites: Api.sites});            
+        Api.totalQuestions--;
+        chrome.storage.sync.remove([apiParam, id].join('_'), callback);
     }
     , updateQuestion: function(data) {
+        var storeQ = {};
         Api.sites[data.site].questions[data.question_id] = data;
-        chrome.storage.sync.set({sites: Api.sites});
+        storeQ[[data.site, data.question_id].join('_')] = data;
+        chrome.storage.sync.set(storeQ);
     }
 };
 

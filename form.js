@@ -4,8 +4,10 @@ var Form = {
     , init: function () {
         //get bgpage and clear out updates
         Form.bgPage = chrome.extension.getBackgroundPage();
-        setTimeout(Form.renderQuestions, 100);
-        Form.renderAddThisLink();
+        setTimeout(function() {
+            Form.renderQuestions();
+            Form.renderAddThisLink();
+        }, 50);
         //Form.bgPage.BG.updateQuestions();
 
         //bind
@@ -15,7 +17,8 @@ var Form = {
             .on('click', '.actions .monitor', Form.handleMonitorClick)
             .on('click', '.markread', Form.handleMarkReadClick)
             .on('click', '.clear', Form.handleClearClick)
-            .on('click', '.addthis', Form.handleAddClick)
+            .on('click', '.js-add', Form.handleAddClick)
+            .on('click', '.empty a', Form.handleEmptyClick)
         ;
     }
     , getQuestion: function(data) {
@@ -25,7 +28,7 @@ var Form = {
             , answers, views
         ;        
 
-        template.data({site: data.site, questionId: data.question_id});
+        template.attr({'data-site': data.site, 'data-question-id': data.question_id});
 
         if (data.updated) {
             template.addClass('updated');
@@ -53,7 +56,7 @@ var Form = {
 
         template.find('.questioncomments').text(data.comment_count);
 
-        template.find('figure img').attr({src: site.icon_url, alt: site.name, title: site.name});
+        template.find('figure img').attr({src: site.icon_url, alt: site.name, title: $('<div />').html(site.name).text()});
 
         return template;
     }
@@ -71,10 +74,19 @@ var Form = {
         confirm('Are you sure?') && Form.reset();
     }
     , handleDeleteClick: function(e) {
+        var link = $(this)
+            , q = link.parents('.q')
+        ;
         e.preventDefault();
-        var q = $(this).parents('.q');
-        Api.removeQuestion(q.data('site'), q.data('questionId'));
-        q.remove();
+        Api.removeQuestion(q.data('site'), q.data('questionId'), function() {
+            q.remove();
+            !Api.totalQuestions && Form.reset();
+            Form.renderAddThisLink();
+        });
+    }
+    , handleEmptyClick: function(e) {
+        e.preventDefault();
+        chrome.tabs.create({url: this.href });
     }
     , handleError: function (msg) {
         $('.error').text(msg).show().delay(3000).fadeOut('fast');
@@ -130,39 +142,49 @@ var Form = {
                 , tab = tabArr[0]
                 , id = tab.url.replace('http://', '').split('/')[2] //follows "questions"
                 , param = getApiParam(tab.url)
-                , add = $('#wrapper .addthis')
+                , add = $('#template .addthis').clone()
+                , actions = $('#actions')
+                , questions = $('#questions')
             ;
-
+            actions.find('.addthis').remove();
             if (tab.url.indexOf('questions') > -1 && param) {
                 isFollowing = Api.sites[param] && Api.sites[param].questions[id];
 
-                if (isFollowing) {
-                    $('#wrapper').off('click', '.addthis', Form.handleAddClick);
-                    add.html('You are following this question.');
+                if (isFollowing) {                    
+                    add.html('You are following this question.').removeClass('js-add');
                 } else {
                     add.find('span').text(id);
-                }                
+                    if (!Api.totalQuestions) {
+                        questions.html($('#template').find('.helper').clone());
+                    }
+                }
+                actions.prepend(add);
             } else {
                 //not on SE site
-                add.hide();
+                actions.find('.addthis').remove();
             }
         });
     }
     , renderQuestions: function () {
         var allQs, param, site, q;
-        allQs = $('#questions').empty().hide();
-        for (param in Api.sites) {
-            site = Api.sites[param];
-            for (q in site.questions) {
-                allQs.append(Form.getQuestion(site.questions[q]));
+        if (Api.totalQuestions) {
+            allQs = $('#questions').empty().hide();
+            for (param in Api.sites) {
+                site = Api.sites[param];
+                for (q in site.questions) {
+                    allQs.append(Form.getQuestion(site.questions[q]));
+                }
             }
+            allQs.show();
+            $('.loading').remove();            
+        } else {
+            Form.reset();
         }
-        allQs.show();
-        $('.loading').remove();
     }
     , reset: function () {
         Api.empty();
-        $('#questions').empty();
+        $('#questions').empty().append($('#template').find('.empty').clone());
+        Form.renderAddThisLink();
     }
     , toggleMonitor: function (button) {
         var qBody = button.parents('.q')
