@@ -5,7 +5,7 @@ StackStalker
 
 Latest version: 3.0 | Released: Sept. 13, 2014
 
-Rewritten from near-scratch, **StackStalker** will monitor any question on any [Stack Exchange](http://stackexchange.com/sites) site and let you know when something has updated. Don't sit there and mash your F5 key waiting for something to happen. Instead, while viewing a question, click the StackStalker icon next to the address bar, and click the "Add this question" button. Then go browse something else while StalkStalker does the work for you. No need for logging in or creating a Stack Exchange account.
+Rewritten from near-scratch, **StackStalker** is a **chrome extension** that will monitor any question on any [Stack Exchange](http://stackexchange.com/sites) site and let you know when something has updated. Don't sit there and mash your F5 key waiting for something to happen. Instead, while viewing a question, click the StackStalker icon next to the address bar, and click the "Add this question" button. Then go browse something else while StalkStalker does the work for you. No need for logging in or creating a Stack Exchange account.
 
 When you've added one or more questions, the logo will turn from gray (inactive) to blue (active). When a question has been updated, meaning the answer count, comment count, upvote count, or answer acceptance status has been updated, the icon will display a number for how many questions have been updated.
 
