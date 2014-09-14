@@ -41,7 +41,7 @@
     window.SS = window.SS || {};
 
     var Api = SS.Api = {
-        key: 'XIlKRyP9jUyL5p-LkZtcpw'
+        key: 'E*SVgMUlGvyMBrRucMfILA(('
         , version: '2.2'
         , sites: {}
         , totalQuestions: 0
@@ -146,7 +146,7 @@
 
             //to see what is being filtered:
             //https://api.stackexchange.com/docs/questions-by-ids#order=desc&sort=activity&ids=12452275%3B20511168&filter=!-Kh(Q.0gxbkCOEWx3OgG_bJrd4ml-QyMG&site=stackoverflow&run=true
-            url = 'https://api.stackexchange.com/' + Api.version + '/questions/' + ids.join(';') + '?site=' + data.site.api_site_parameter + '&filter=!-Kh(Q.0gxbkCOEWx3OgG_bJrd4ml-QyMG';
+            url = 'https://api.stackexchange.com/' + Api.version + '/questions/' + ids.join(';') + '?site=' + data.site.api_site_parameter + '&filter=!-Kh(Q.0gxbkCOEWx3OgG_bJrd4ml-QyMG&key=' + Api.key;
             return $.ajax(url, {type: 'GET'})
                 .then(function(resp) {
                     var i, len, arr = [];
@@ -160,7 +160,7 @@
         , getSite: function(apiParam) {
             //to see what is being filtered:
             //https://api.stackexchange.com/docs/sites#pagesize=1000&filter=!)QmDpcIl)2PARZSfYk9uc*lK&run=true
-            return $.ajax('https://api.stackexchange.com/' + Api.version + '/info?site=' + apiParam + '&filter=!)5FwpfJMpKy93kVbMYKqm1GbwTga', {type: 'GET'})
+            return $.ajax('https://api.stackexchange.com/' + Api.version + '/info?site=' + apiParam + '&filter=!)5FwpfJMpKy93kVbMYKqm1GbwTga&key=' + Api.key, {type: 'GET'})
                 .done(function(resp) {
                     var storeSite = {};
                     Api.sites[apiParam] = {site: resp.items[0].site, questions: {}};
