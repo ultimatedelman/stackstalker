@@ -67,6 +67,7 @@
                         Api.totalQuestions++;
                     }                
                 }
+                $(window).trigger('apiready');
             });
         }
         , addQuestion: function(callback) {
@@ -78,7 +79,6 @@
                     , id = url.split('/')[2] //follows "questions"
                     , site
                 ;
-                
                 apiParam = Api.getApiParam(url);
                 
                 site = Api.sites[apiParam];
@@ -99,13 +99,9 @@
             function doAdd(data) {
                 var q = data.questions[0]
                     , storeQ = {}
-                ;
-                //set q data
-                q.autoupdate = true;
-                q.updated = false;
-                q.site = apiParam;
+                ;                
+                
                 Api.sites[apiParam].questions[q.question_id] = q;
-
                 storeQ[[apiParam, q.question_id].join('_')] = q;
 
                 chrome.storage.sync.set(storeQ, callback);
@@ -134,7 +130,11 @@
                     return url.split('.com')[0];                    
                 } else {
                     //no api param
-                    return false;
+                    throw {
+                        name: 'NoApiParam'
+                        , message: 'Could not find API parameter'
+                        , url: url
+                    };
                 }
             }
         }
@@ -149,7 +149,11 @@
             url = 'https://api.stackexchange.com/' + Api.version + '/questions/' + ids.join(';') + '?site=' + data.site.api_site_parameter + '&filter=!-Kh(Q.0gxbkCOEWx3OgG_bJrd4ml-QyMG';
             return $.ajax(url, {type: 'GET'})
                 .then(function(resp) {
-                    return { questions: resp.items, site: data };
+                    var i, len, arr = [];
+                    for (i = 0, len = resp.items.length; i < len; i++) {
+                        arr.push(prepQuestion(resp.items[i], data.site.api_site_parameter));
+                    }
+                    return { questions: arr, site: data.site };
                 })
             ;
         }
@@ -174,15 +178,24 @@
             Api.totalQuestions--;
             chrome.storage.sync.remove([apiParam, id].join('_'), callback);
         }
-        , updateQuestion: function(data) {
+        , updateQuestion: function(data, callback) {
             var storeQ = {};
+            callback = callback || $.noop;
             Api.sites[data.site].questions[data.question_id] = data;
             storeQ[[data.site, data.question_id].join('_')] = data;
-            chrome.storage.sync.set(storeQ);
+            chrome.storage.sync.set(storeQ, callback);
         }
     };
 
     Api.init();
+
+    function prepQuestion(q, apiParam) {
+        q.autoupdate = true;
+        q.updated = false;
+        q.comment_count = q.comment_count || 0;
+        q.site = apiParam;
+        return q;
+    }
 
 })(window, jQuery);
 

@@ -2,17 +2,20 @@
 (function(window, $) {
     window.SS = window.SS || {};
     
-    var Form = SS.Form = {
-        bgPage: null    
+    //get bgpage and clear out updates
+    var bgPage = chrome.extension.getBackgroundPage()            
+    , Form = SS.Form = {
+        events: {} 
         , init: function () {
-            //get bgpage and clear out updates
-            Form.bgPage = chrome.extension.getBackgroundPage();
+            
             //bind Form's Api reference to one loaded on BG page
-            SS.Api = SS.Api || Form.bgPage.SS.Api;
+            SS.Api = SS.Api || bgPage.SS.Api;
 
             Form.renderQuestions();
-            Form.renderAddThisLink();
-            //Form.bgPage.BG.updateQuestions();
+            Form.renderAddThisLink();            
+            
+            sub('bgquestionsupdated', Form.handleBGQuestionsUpdated);
+            pub('forminit');
 
             //bind
             $('#wrapper')
@@ -70,8 +73,12 @@
             button.after('<img src="images/loading.gif" alt="Loading..." class="loading" />');
             SS.Api.addQuestion(function() {
                 Form.renderQuestions();
+                pub('formaddquestion');                
                 button.hide();
             });
+        }
+        , handleBGQuestionsUpdated: function() {
+            Form.renderQuestions();
         }
         , handleClearClick: function(e) {
             e.preventDefault();
@@ -137,8 +144,7 @@
             SS.Api.updateQuestion(data);
             qBody.replaceWith(Form.getQuestion(data));
 
-            // Form.bgPage.BG.updates--;
-            // Form.bgPage.BG.updateBadge();
+            pub('formquestionread');
         }
         , renderAddThisLink: function () {
             chrome.tabs.query({active: true, currentWindow: true}, function (tabArr) {
@@ -190,6 +196,7 @@
             SS.Api.empty();
             $('#questions').empty().append($('#template').find('.empty').clone());
             Form.renderAddThisLink();
+            pub('formreset');
         }
         , toggleMonitor: function (button) {
             var qBody = button.parents('.q')
@@ -198,14 +205,28 @@
             button.toggleClass('off');
             data.autoupdate = !button.is('.off');
 
-            SS.Api.updateQuestion(data);
-            qBody.replaceWith(Form.getQuestion(data));
+            SS.Api.updateQuestion(data, function() {
+                qBody.replaceWith(Form.getQuestion(data));
+                pub('formupdatemonitor');                
+            });
+        }
+        , trigger: function(action, data) {
+            //data optional
+            typeof Form.events[action] === 'function' && Form.events[action](data);
         }
     };
     
     $(function() {
         Form.init();
     });
+
+    function sub(action, handler) {        
+        Form.events[action] = handler;
+    }
+
+    function pub(action) {
+        bgPage && bgPage.SS.BG.trigger(action);
+    }
     
 })(window, jQuery);
 
