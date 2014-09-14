@@ -3,7 +3,7 @@ StackStalker
 
 **Monitor any question from any Stack Exchange site and see when it is updated.**
 
-Latest version: 3.0 | Released: Sept. 13, 2014)
+Latest version: 3.0 | Released: Sept. 13, 2014
 
 Rewritten from near-scratch, *StackStalker* will monitor any question on any Stack Exchange site and let you know when something has updated. Don't sit there and mash your F5 key waiting for something to happen. Instead, while viewing a question, click the StackStalker icon next to the address bar, and click the "Add this question" button. Then go browse something else while StalkStalker does the work for you. No need for logging in or creating a Stack Exchange account.
 
