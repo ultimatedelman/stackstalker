@@ -75,7 +75,7 @@
             callback = callback || $.noop;
             chrome.tabs.query({active: true, currentWindow: true}, function (tabArr) {
                 var tab = tabArr[0]
-                    , url = tab.url.replace('http://', '')
+                    , url = tab.url.replace(/https?:\/\//, '')
                     , id = url.split('/')[2] //follows "questions"
                     , site
                 ;
@@ -121,7 +121,7 @@
             Api.totalQuestions = 0;
         }
         , getApiParam: function(url) {
-            url = url.replace('http://', '');
+            url = url.replace(/https?:\/\//, '');
             if (url.indexOf('stackexchange') > -1) {
                 //if stackexchange site, format is xxxx.stackexchange.com/questions/[id]/[slug]
                  return url.split('.stackexchange')[0];

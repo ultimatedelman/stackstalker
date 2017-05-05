@@ -150,7 +150,7 @@
             chrome.tabs.query({active: true, currentWindow: true}, function (tabArr) {
                 var isFollowing = false
                     , tab = tabArr[0]
-                    , id = tab.url.replace('http://', '').split('/')[2] //follows "questions"
+                    , id = tab.url.replace(/https?:\/\//, '').split('/')[2] //follows "questions"
                     , param = SS.Api.getApiParam(tab.url)
                     , add = $('#template .addthis').clone()
                     , actions = $('#actions')
